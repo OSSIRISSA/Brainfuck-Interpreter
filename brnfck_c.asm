@@ -1,16 +1,16 @@
 .model tiny
 .data
-    tape db 10000 dup(0)  ; Tape of chars
-    bfcode db ',+++.' , '$'  ; Some default code
+    bfcode db '+.' , '$'  ; Some default code
+    tape db 10000 dup(?)  ; Tape of chars
 
 .code
-org 100h
+ORG 0100h
 start:
-    ;mov ax, @data
-    ;mov ds, ax
+    mov ax, cs
+    mov ds, ax
 
+    lea si, bfcode  ; Current pos in bf code
     lea bx, tape  ; Current pos on tape
-    lea si, bfcode  ; Current pos in code
 
 read_code:
     mov al, [si]  ; Load current Command into AL
@@ -64,11 +64,13 @@ check_input:
 
 check_loop_begin:
     cmp al, '['
+    je start_loop
     jne check_loop_end
     ; loop begin
 
 check_loop_end:
     cmp al, ']'
+    je end_loop
     jne next_command
     ; loop end
 
@@ -79,5 +81,53 @@ next_command:
 done:
     mov ax, 4C00h
     int 21h
+    
+start_loop:
+    cmp byte ptr [bx], 0
+    jne loop_continue
+    mov cx, 1
+find_matching_bracket:
+    inc si
+    mov al, [si]
+    cmp al, '['
+    je inc_cx
+    cmp al, ']'
+    je dec_cx
+    jnz find_matching_bracket
+    jmp read_code
 
+inc_cx:
+    inc cx
+    jmp find_matching_bracket
+
+dec_cx:
+    dec cx
+    jnz find_matching_bracket
+    jmp read_code
+
+loop_continue:
+    jmp next_command
+
+end_loop:
+    cmp byte ptr [bx], 0
+    je next_command
+    mov cx, 1
+find_matching_open_bracket:
+    dec si
+    mov al, [si]
+    cmp al, ']'
+    je inc_cx_end
+    cmp al, '['
+    je dec_cx_end
+    jnz find_matching_open_bracket
+    jmp start_loop
+
+inc_cx_end:
+    inc cx
+    jmp find_matching_open_bracket
+
+dec_cx_end:
+    dec cx
+    jnz find_matching_open_bracket
+    jmp start_loop
 end start
