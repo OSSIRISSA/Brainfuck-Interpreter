@@ -1,6 +1,7 @@
 .model tiny
 .data
-    bfcode db '+.' , '$'  ; Some default code
+    inputFileName db 'TEST4.B', 0  ; Input Brainfuck ode file name
+    readBuffer db 10000 dup(?)  ; Buffer for reading BF code
     tape db 10000 dup(?)  ; Tape of chars
 
 .code
@@ -8,10 +9,30 @@ ORG 0100h
 start:
     mov ax, cs
     mov ds, ax
+    
+    ; Open input file for reading
+    mov ah, 3Dh
+    mov al, 0 ; Read mode  
+    lea dx, inputFileName
+    int 21h
 
-    lea si, bfcode  ; Current pos in bf code
-    lea bx, tape  ; Current pos on tape
-
+    ; Read BF code into buffer
+    mov bx, ax
+    mov ah, 3Fh
+    lea dx, readBuffer
+    mov cx, 10000
+    int 21h
+    
+    ;link code to si
+    lea si, readBuffer
+    
+    ; Close file function
+    mov ah, 3Eh
+    int 21h
+    
+    ;link chars to di
+    lea di, tape        
+    
 read_code:
     mov al, [si]  ; Load current Command into AL
     cmp al, 0  ; Check end of the code
@@ -20,46 +41,46 @@ read_code:
     ; dp++
     cmp al, '>'
     jne check_decrement_pointer
-    inc bx
+    inc di
     jmp short next_command
 
 check_decrement_pointer:
     ; dp--
     cmp al, '<'
     jne check_increment_data
-    dec bx
+    dec di
     jmp short next_command
 
 check_increment_data:
     ; data[dp]++
     cmp al, '+'
     jne check_decrement_data
-    inc byte ptr [bx]
+    inc byte ptr [di]
     jmp short next_command
 
 check_decrement_data:
     ; data[dp]--
     cmp al, '-'
     jne check_output
-    dec byte ptr [bx]
+    dec byte ptr [di]
     jmp short next_command
 
 check_output:
     ; print char
     cmp al, '.'
     jne check_input
-    mov dl, [bx]
-    mov ah, 02h  ; Display output
-    int 21h
+    mov dl, [di]
+    mov ah, 02h         
+    int 21h          
     jmp short next_command
-
+    
 check_input:
     ; read char
     cmp al, ','
     jne check_loop_begin
     mov ah, 01h  ; Read input
     int 21h
-    mov [bx], al
+    mov [di], al
     jmp short next_command
 
 check_loop_begin:
@@ -83,9 +104,10 @@ done:
     int 21h
     
 start_loop:
-    cmp byte ptr [bx], 0
+    cmp byte ptr [di], 0
     jne loop_continue
     mov cx, 1
+    
 find_matching_bracket:
     inc si
     mov al, [si]
@@ -109,7 +131,7 @@ loop_continue:
     jmp next_command
 
 end_loop:
-    cmp byte ptr [bx], 0
+    cmp byte ptr [di], 0
     je next_command
     mov cx, 1
 find_matching_open_bracket:
