@@ -25,9 +25,6 @@ finished_parsing:
     lea dx, fileName                    ; DX points to the file name
     int 21h
     push ax
-
-    mov ax, cs
-    mov ds, ax
     
     mov cx, 10000
     push cx
@@ -58,8 +55,10 @@ read_code:
     mov al, [si]                        ; Load current Command into AL
     ;inc si
     or al, al                           ; Check end of the code
-    jz short done
+    jnz short check_increment_pointer
+    ret
 
+check_increment_pointer:
     ; dp++
     cmp al, '>'
     jne short check_decrement_pointer
@@ -135,10 +134,6 @@ check_loop_end:
 next_command:
     inc si
     jmp short read_code
-
-done:
-    mov ax, 4C00h
-    int 21h
     
 start_loop:
     or word ptr [di], 0
@@ -148,22 +143,22 @@ start_loop:
 find_matching_bracket_forward:
     mov cx, 1                           ; Level of nesting, starting with 1 for the current loop
     forward_search_loop:
-        inc si                              ; Move to the next character
-        mov al, [si]                               ; Load it into AL
+        inc si                          ; Move to the next character
+        mov al, [si]                    ; Load it into AL
         cmp al, '['
-        je  increase_nesting                ; If we find another '[', increase nesting level
+        je  increase_nesting            ; If we find another '[', increase nesting level
         cmp al, ']'
-        je  decrease_nesting                ; If we find a ']', decrease nesting level and check if it's the matching one
-        jmp forward_search_loop             ; Continue searching forward
+        je  decrease_nesting            ; If we find a ']', decrease nesting level and check if it's the matching one
+        jmp forward_search_loop         ; Continue searching forward
 
     increase_nesting:
-        inc cx                              ; Increase nesting level
+        inc cx                          ; Increase nesting level
         jmp forward_search_loop
 
     decrease_nesting:
-        dec cx                              ; Decrease nesting level
-        jnz forward_search_loop             ; If CX != 0, we're still inside nested loops
-        jmp next_command                    ; Found the matching ']', continue execution
+        dec cx                          ; Decrease nesting level
+        jnz forward_search_loop         ; If CX != 0, we're still inside nested loops
+        jmp next_command                ; Found the matching ']', continue execution
 
 end_loop:
     or word ptr [di], 0
@@ -173,20 +168,21 @@ end_loop:
 find_matching_bracket_backward:
     mov cx, 1                           ; Level of nesting, starting with 1 for the current loop
     backward_search_loop:
-        dec si                              ; Move to the previous character
-        mov al, [si]                              ; Load it into AL
+        dec si                          ; Move to the previous character
+        mov al, [si]                    ; Load it into AL
         cmp al, ']'
-        je  increase_nesting_backward       ; If we find another ']', increase nesting level
+        je  increase_nesting_backward   ; If we find another ']', increase nesting level
         cmp al, '['
-        je  decrease_nesting_backward       ; If we find a '[', decrease nesting level and check if it's the matching one
-        jmp backward_search_loop            ; Continue searching backward
+        je  decrease_nesting_backward   ; If we find a '[', decrease nesting level and check if it's the matching one
+        jmp backward_search_loop        ; Continue searching backward
 
     increase_nesting_backward:
-        inc cx                              ; Increase nesting level
+        inc cx                          ; Increase nesting level
         jmp backward_search_loop
 
     decrease_nesting_backward:
-        dec cx                              ; Decrease nesting level
-        jnz backward_search_loop            ; If CX != 0, we're still inside nested loops
-        jmp next_command                    ; Found the matching '[', continue execution
+        dec cx                          ; Decrease nesting level
+        jnz backward_search_loop        ; If CX != 0, we're still inside nested loops
+        jmp next_command                ; Found the matching '[', continue execution
+
 end start
