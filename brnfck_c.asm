@@ -1,8 +1,8 @@
 .model tiny
 .data
     fileName DB 20 dup(?)
+    tape DW 10000 dup(?)                ; Tape of chars
     readBuffer DB 10000 dup(?)          ; Buffer for reading BF code
-    tape DW 10000 dup(0)                ; Tape of chars
 .code
 ORG 0100h
 start:
@@ -24,16 +24,34 @@ finished_parsing:
     mov ah, 3Dh
     lea dx, fileName                    ; DX points to the file name
     int 21h
-    mov bx, ax
+    push ax
 
     mov ax, cs
     mov ds, ax
     
+    mov cx, 10000
+    lea bx, readBuffer
+    xor ax, ax
+clearTapeLoop:
+    mov [bx], ax
+    inc bx
+    inc bx
+    loop clearTapeLoop
+
     ; Read BF code into buffer
     mov ah, 3Fh
+    pop bx
     lea dx, readBuffer
     mov cx, 10000
     int 21h
+
+    lea bx, tape
+    xor ax, ax
+clearTapeLoop1:
+    mov [bx], ax
+    inc bx
+    inc bx
+    loop clearTapeLoop1
 
     ;link code to si
     lea si, readBuffer  
@@ -41,14 +59,6 @@ finished_parsing:
     ; Close file
     mov ah, 3Eh         
     int 21h
-
-    lea bx, tape
-    xor ax, ax
-clearTapeLoop:
-    mov [bx], ax
-    inc bx
-    inc bx
-    loop clearTapeLoop
 
     lea di, tape
 
