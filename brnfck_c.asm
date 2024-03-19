@@ -1,11 +1,11 @@
 .model tiny
 .data
-    tape DW 10000 dup(?)                ; Tape of chars
-    readBuffer DB 10000 dup(?)          ; Buffer for reading BF code
+    tape DW 10000 dup(?)                    ; Tape of chars
+    readBuffer DB 10000 dup(?)              ; Buffer for reading BF code
 .code
 ORG 0100h
 start:
-    mov si, 82h                         ; Start after the command length byte
+    mov si, 82h                             ; Start after the command length byte
     parse_filename:
         lodsb
         cmp al, 0Dh
@@ -19,18 +19,11 @@ start:
         push ax
     
         ;init buffers with 0
-        mov cx, 10000
+        mov cx, 30000
         push cx
-        lea bx, readBuffer
         lea di, tape
         xor ax, ax
-    clearTapeLoop:
-        mov [bx], ax
-        mov [di], ax
-        inc bx
-        inc di
-        inc di
-        loop clearTapeLoop
+        rep stosb
 
         ; Read BF code into buffer
         mov ah, 3Fh
@@ -107,11 +100,12 @@ start:
         mov ah, 3Fh
         mov bx, 0                           ; stdin handle
         mov cx, 1                           ; 1 byte to read
+        mov word ptr [di], 0
         lea dx, [di]                        ; buffer to read into
         int 21h                             ; read into buffer
         or ax, ax                           ; Check if the number of bytes read is 0 (EOF)
         jnz short next_command              ; If EOF, handle it specifically
-        mov word ptr [di], 0FFFFh           ; EOF
+        dec word ptr [di]                             ; EOF
         jmp short next_command
 
     check_loop_begin:
