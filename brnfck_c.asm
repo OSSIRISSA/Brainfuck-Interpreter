@@ -5,7 +5,7 @@
 .code
 ORG 0100h
 start:
-    mov si, 82h                             ; Start after the command length byte
+    xor si, si                              ; Start after the command length byte
     parse_filename:
         lodsb
         cmp al, 0Dh
@@ -98,14 +98,14 @@ start:
         cmp al, ','
         jne short check_loop_begin
         mov ah, 3Fh
-        mov bx, 0                           ; stdin handle
+        xor bx, bx                           ; stdin handle
         mov cx, 1                           ; 1 byte to read
-        mov word ptr [di], 0
+        and word ptr [di], bx
         lea dx, [di]                        ; buffer to read into
         int 21h                             ; read into buffer
         or ax, ax                           ; Check if the number of bytes read is 0 (EOF)
         jnz short next_command              ; If EOF, handle it specifically
-        dec word ptr [di]                             ; EOF
+        dec word ptr [di]                   ; EOF
         jmp short next_command
 
     check_loop_begin:
@@ -122,12 +122,15 @@ start:
         inc si
         jmp short read_code
     
-    start_loop:
-        or word ptr [di], 0
-        jz  find_matching_bracket_forward   ; If zero, we need to find the matching closing bracket
-        jmp next_command                    ; Otherwise, just proceed
+    end_loop:
+        pop si
 
-    find_matching_bracket_forward:
+    start_loop:
+        push si
+
+        or word ptr [di], 0
+        jnz  next_command
+        pop si
         mov cx, 1                           ; Level of nesting, starting with 1 for the current loop
         forward_search_loop:
             inc si                          ; Move to the next character
@@ -146,29 +149,4 @@ start:
             dec cx                          ; Decrease nesting level
             jnz forward_search_loop         ; If CX != 0, we're still inside nested loops
             jmp next_command                ; Found the matching ']', continue execution
-
-    end_loop:
-        or word ptr [di], 0
-        jne find_matching_bracket_backward  ; If nonzero, we need to find the matching opening bracket
-        jmp next_command                    ; Otherwise, just proceed
-
-    find_matching_bracket_backward:
-        mov cx, 1                           ; Level of nesting, starting with 1 for the current loop
-        backward_search_loop:
-            dec si                          ; Move to the previous character
-            mov al, [si]                    ; Load it into AL
-            cmp al, ']'
-            je  increase_nesting_backward   ; If we find another ']', increase nesting level
-            cmp al, '['
-            je  decrease_nesting_backward   ; If we find a '[', decrease nesting level and check if it's the matching one
-            jmp backward_search_loop        ; Continue searching backward
-
-        increase_nesting_backward:
-            inc cx                          ; Increase nesting level
-            jmp backward_search_loop
-
-        decrease_nesting_backward:
-            dec cx                          ; Decrease nesting level
-            jnz backward_search_loop        ; If CX != 0, we're still inside nested loops
-            jmp next_command                ; Found the matching '[', continue execution
 end start
