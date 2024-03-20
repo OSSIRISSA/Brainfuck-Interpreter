@@ -60,8 +60,22 @@ start:
     check_increment_data:
             ; data[dp]++
             cmp al, '+'
-            jne short check_decrement_data
+            jne short check_input
             inc word ptr [di]
+
+    check_input:
+        ; read char
+        cmp al, ','
+        jne short check_decrement_data
+        mov ah, 3Fh
+        xor bx, bx                              ; stdin handle
+        mov cx, 1                               ; 1 byte to read
+        and word ptr [di], bx
+        lea dx, [di]                            ; buffer to read into
+        int 21h                                 ; read into buffer
+        or ax, ax                               ; Check if the number of bytes read is 0 (EOF)
+        jnz short read_code                     ; If EOF, handle it specifically
+        dec word ptr [di]                       ; EOF
 
     check_decrement_data:
             ; data[dp]--
@@ -72,7 +86,7 @@ start:
     check_output:
             ;print char
             cmp al, '.'
-            jne short check_input
+            jne short check_loop_begin
             mov dx, [di]
             cmp dx, 0Ah
             jne short print
@@ -87,20 +101,6 @@ start:
             mov ah, 02h         
             int 21h          
             jmp short read_code
-
-    check_input:
-        ; read char
-        cmp al, ','
-        jne short check_loop_begin
-        mov ah, 3Fh
-        xor bx, bx                              ; stdin handle
-        mov cx, 1                               ; 1 byte to read
-        and word ptr [di], bx
-        lea dx, [di]                            ; buffer to read into
-        int 21h                                 ; read into buffer
-        or ax, ax                               ; Check if the number of bytes read is 0 (EOF)
-        jnz short read_code                     ; If EOF, handle it specifically
-        dec word ptr [di]                       ; EOF
 
     check_loop_begin:
         ; loop begin
