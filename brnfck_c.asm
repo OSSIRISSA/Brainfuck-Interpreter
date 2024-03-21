@@ -7,13 +7,10 @@ ORG 0100h
 start:
     ;init
     xor bx, bx
-    ;xor cx, cx
-
     or bl, ds:[80h]
     add bl, 81h
-    ;add si, cx
-    and byte ptr [bx], 0
-    xor bx, bx
+    and byte ptr [bx], bh
+    xor bl, bl
 
     mov ah, 3Dh
     mov dx, 82h                                     ; DX points to the file name
@@ -40,6 +37,7 @@ start:
     xor bx, bx                                      ; stdin handle
 
     read_code:
+            mov cx, 1 
             lodsb                                   ; Load current Command into AL
             or al, al                               ; Check end of the code
             jnz short check_increment_pointer
@@ -80,13 +78,10 @@ start:
             dec al
             jnz short check_decrement_data
             mov ah, 3Fh
-            mov cx, 1                               ; 1 byte to read
-            and word ptr [di], bx
+            and word ptr [di], bx                   ; set cell to 0 (bx is allways 0)
             lea dx, [di]                            ; buffer to read into
             int 21h                                 ; read into buffer
-            or ax, ax                               ; Check if the number of bytes read is 0 (EOF)
-            jnz short read_code                     ; If EOF, handle it specifically
-            dec word ptr [di]                       ; EOF
+            xor ax, cx                              ; if 0 bytes read -> xor 0, 1 -> next label decrements pointer to FFFFh
 
     check_decrement_data:
             ; data[dp]--
@@ -99,8 +94,8 @@ start:
             dec al
             jnz short read_code
             mov dx, [di]
-            cmp dx, 0Ah
             mov ah, 02h
+            cmp dx, 0Ah
             jne short print
             push dx
             mov dx, 0Dh
@@ -121,20 +116,16 @@ start:
             or word ptr [di], bx
             jnz short read_code
             pop si
-            mov cx, 1                               ; Level of nesting, starting with 1 for the current loop
             forward_search_loop:
                 lodsb                               ; Load it into AL
                 cmp al, '['
                 je short increase_nesting           ; If we find another '[', increase nesting level
                 cmp al, ']'
-                je short decrease_nesting           ; If we find a ']', decrease nesting level and check if it's the matching one
-                jmp short forward_search_loop       ; Continue searching forward
+                jne short forward_search_loop           ; If we find a ']', decrease nesting level and check if it's the matching one
+                loop short forward_search_loop     ; If CX != 0, we're still inside nested loops
+                jmp short read_code
 
             increase_nesting:
                 inc cx                              ; Increase nesting level
-                jmp short forward_search_loop
-
-            decrease_nesting:
-                loop short forward_search_loop      ; If CX != 0, we're still inside nested loops
-                jmp short read_code
+                jmp short forward_search_loop   
 end start
