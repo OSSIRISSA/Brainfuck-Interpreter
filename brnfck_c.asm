@@ -1,14 +1,10 @@
 .model tiny
-.data
-    tape DW 10000 dup(?)                            ; Tape of chars
-    codeBuffer DB 10000 dup(?)                      ; Buffer for reading BF code
 .code
 ORG 0100h
 start:
-        xor bx, bx                                      ;--------init-------
-        or bl, ds:[80h]
-        add bl, 81h
-        and [bx], bh
+        mov bl, ds:[80h]                                ;--------init-------
+        xor bh, bh
+        and [bx+81h], bh
         xor bl, bl
 
         mov ah, 3Dh                                     ;-----open-file-----
@@ -16,9 +12,9 @@ start:
         int 21h
         xchg bx, ax
     
-        mov cx, 30000                                    ;----init-with-0----
+        mov cx, 25000                                   ;----init-with-0----
         push cx
-        lea di, tape
+        mov di, 5000
         push di
         rep stosb
 
@@ -26,7 +22,7 @@ start:
 
         mov ah, 3Fh                                     ;------read-bf------
         pop cx
-        lea dx, codeBuffer
+        mov dx, cx
         push dx
         int 21h
 
@@ -69,10 +65,10 @@ start:
                 dec al
                 jnz short check_decrement_data
                 mov ah, 3Fh
-                and word ptr [di], bx                   ; set cell to 0 (bx is allways 0)
+                and [di], bx                            ; set cell to 0 (bx is allways 0)
                 lea dx, [di]                            
                 int 21h                                 
-                xor ax, cx                              ; if 0 bytes read -> xor 0, 1 -> next label decrements pointer to FFFFh
+                xor al, cl                              ; if 0 bytes read -> xor 0, 1 -> next label decrements pointer to FFFFh
 
         check_decrement_data:                           ;---(data[dp]--)----
                 dec al
@@ -101,7 +97,7 @@ start:
 
         start_loop:
                 push si
-                or word ptr [di], bx
+                or [di], bx
                 jnz short read_code
                 pop si
                 search_loop:
@@ -112,6 +108,6 @@ start:
                 second_part:
                         cmp al, ']'
                         jne short search_loop           ; If !find ']', repeat nesting
-                        loope short search_loop         ; If CX != 0, loop, nesting--
+                        loop short search_loop          ; If CX != 0, loop, nesting--
                 jmp short read_code
 end start
