@@ -2,7 +2,7 @@
 .code
 ORG 0100h
 start:
-        mov bx, ds:[80h]                                ;--------init-------
+        mov bl, ds:[80h]                                ;--------init-------
         xor bh, bh
         and [bx+81h], bh
         xor bl, bl
@@ -14,7 +14,7 @@ start:
 
         mov cx, 25000                                   ;----init-with-0----
         push cx
-        mov di, 1000
+        mov di, 5000
         push di
         rep stosb
 
