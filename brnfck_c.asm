@@ -2,7 +2,7 @@
 .code
 ORG 0100h
 start:
-        mov bl, ds:[80h]                                ;--------init-------
+        mov bx, ds:[80h]                                ;--------init-------
         xor bh, bh
         and [bx+81h], bh
         xor bl, bl
@@ -11,10 +11,10 @@ start:
         mov dx, 82h                                     ; DX points to the file name
         int 21h
         xchg bx, ax
-    
+
         mov cx, 25000                                   ;----init-with-0----
         push cx
-        mov di, 5000
+        mov di, 1000
         push di
         rep stosb
 
@@ -23,21 +23,18 @@ start:
         mov ah, 3Fh                                     ;------read-bf------
         pop cx
         mov dx, cx
-        push dx
+        mov si, dx                                     ; set brainfuck code buffer
         int 21h
-
-        pop si                                          ; set brainfuck code buffer
+                                        
         xor bx, bx                                      ; BX must be 0 for ands, ors and stdin handle. Immutable
 
         read_code:
                 mov cx, 1                               ; CX must have 1 in it every iteration, used in input and loops
                 lodsb                                   ; Load command into AL
                 or al, al                               ; End of the code
-                jnz short check_increment_pointer
-                ret
+                jz short end
 
-        check_increment_pointer:                        ;------(dp++)-------
-                cmp al, '>'
+                cmp al, '>'                             ;------(dp++)-------
                 jne short check_decrement_pointer
                 inc di
                 inc di
@@ -68,7 +65,7 @@ start:
                 and [di], bx                            ; set cell to 0 (bx is allways 0)
                 lea dx, [di]                            
                 int 21h                                 
-                xor al, cl                              ; if 0 bytes read -> xor 0, 1 -> next label decrements pointer to FFFFh
+                xor al, cl                              ; if 0 bytes read -> xor 0, 1 -> next label decrements pointer to FFFFh, else xor 1,1 -> 0 -> next label doesn't trigger
 
         check_decrement_data:                           ;---(data[dp]--)----
                 dec al
@@ -78,19 +75,19 @@ start:
         check_output:                                   ;----print-char-----
                 dec al
                 jnz short read_code
-                mov dx, [di]
-                mov ah, 02h
-                cmp dx, 0Dh
-                jz short read_code 
-                cmp dx, 0Ah
-                push dx
+                cmp byte ptr [di], 0Dh
+                jz short read_code
+                mov ah, 02h 
+                cmp byte ptr [di], 0Ah
                 jne short print_char
                 mov dx, 0Dh
                 int 21h
         print_char:
-                pop dx
+                mov dx, [di]
                 int 21h
                 jmp read_code
+
+        end: ret
 
         end_loop:                                       ;------loops--------
                 pop si
